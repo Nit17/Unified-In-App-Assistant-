@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Unified In-App Assistant
 
 A comprehensive chat assistant application demonstrating conversation continuity, action execution, context awareness, and ticket management.
@@ -33,23 +34,68 @@ npm run dev
 - **Frontend**: React with Material-UI for modern chat interface
 - **Backend**: Express.js with in-memory data storage
 - **Features**: 
-  - Conversation management
-  - Invoice data processing
-  - Ticket system
-  - Context persistence
-  - Action execution
+  # Unified In-App Assistant
 
-## Usage
+  This application demonstrates a unified in-app assistant that can do actions, explain context, create/track support tickets, and continue the conversation across sessions with role-appropriate visibility.
 
-1. Open the application in your browser
-2. Start typing natural language commands
-3. Watch as the assistant executes actions and maintains context
-4. Create tickets and see them tracked across sessions
+  Sample Scenario:
+  - A customer types: “Filter invoices for last month, vendor=‘IndiSky’, status=failed.”
+  - Then: “Why did these fail?” Assistant explains (e.g., “missing GSTIN in 7 files”).
+  - Assistant offers: “Create a ticket and notify me when fixed.”
+  - Next day, customer returns — chat shows prior context, open ticket, and a new update.
+  - Customer says “download the fixed report.”
 
-## Technologies
+  ## Features
 
-- React.js
-- Express.js
-- Material-UI
-- Socket.io (for real-time updates)
-- Moment.js (for date handling)
+  - Conversational Interface: Natural language interaction with context awareness
+  - Action Execution: Filter invoices, analyze data, generate reports
+  - Ticket Management: Create, track, and update support tickets
+  - Session Continuity: Maintain conversation history across sessions
+  - Role-based Visibility: Different access levels for different user roles
+
+  ## Sample Scenario (Try these prompts)
+
+  1. Filter invoices for last month, vendor='IndiSky', status=failed
+  2. Why did these fail?
+  3. Create a ticket and notify me when fixed
+  4. What's the status of my tickets?
+  5. Download the fixed report
+
+  ## Quick Start
+
+  ```bash
+  # Install all dependencies
+  npm run install-all
+
+  # Start development servers (client + server)
+  npm run dev
+  ```
+
+  Frontend: http://localhost:3000
+  Backend:  http://localhost:5000
+
+  ## Architecture
+
+  - Frontend: React with Material-UI for a modern chat interface
+  - Backend: Express.js with in-memory data storage
+  - Features:
+    - Conversation management
+    - Invoice data processing
+    - Ticket system
+    - Context persistence
+    - Action execution
+
+  ## Usage
+
+  1. Open the application in your browser
+  2. Start typing natural language commands
+  3. Watch as the assistant executes actions and maintains context
+  4. Create tickets and see them tracked across sessions
+
+  ## Technologies
+
+  - React.js
+  - Express.js
+  - Material-UI
+  - Socket.io (for real-time updates)
+  - Moment.js (for date handling)
