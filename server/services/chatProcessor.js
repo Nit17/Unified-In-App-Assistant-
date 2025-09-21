@@ -10,10 +10,14 @@ class ChatProcessor {
 
     // Analyze the message to determine intent
     let intent = null;
+    let llmMeta = {};
     if (useLLM) {
       const llm = await llmService.parseIntent(message).catch(() => ({ intent: null }));
       if (llm && llm.intent && llm.intent.type) {
         intent = llm.intent;
+        if (llm.error) llmMeta.llmError = llm.error;
+      } else if (llm && llm.error === 'rate_limited') {
+        llmMeta.llmError = 'rate_limited';
       }
     }
     if (!intent) {
@@ -53,7 +57,8 @@ class ChatProcessor {
         break;
     }
 
-    return response;
+    // attach meta in a way server can return to client
+    return { ...response, meta: llmMeta };
   }
 
   analyzeIntent(message) {

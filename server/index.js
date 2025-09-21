@@ -84,7 +84,8 @@ app.post('/api/chat', async (req, res) => {
     res.json({
       response: response.text,
       actions: response.actions,
-      ticket: response.ticket
+      ticket: response.ticket,
+      meta: response.meta
     });
 
   } catch (error) {
@@ -213,6 +214,16 @@ app.get('/api/llm/health', async (req, res) => {
     res.json(status);
   } catch (e) {
     res.status(500).json({ enabled: false, healthy: false, reason: e.message });
+  }
+});
+
+// LLM config (safe) + prompt template
+app.get('/api/llm/config', async (req, res) => {
+  try {
+    const cfg = llmService.getConfig();
+    res.json(cfg);
+  } catch (e) {
+    res.status(500).json({ error: 'Unable to load LLM config' });
   }
 });
 

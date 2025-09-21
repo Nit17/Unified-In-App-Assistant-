@@ -1,6 +1,7 @@
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const logger = require('./logger');
 let promptConfig = null;
 try {
   const cfgPath = path.join(__dirname, '..', 'config', 'promptConfig.json');
@@ -56,6 +57,7 @@ async function health() {
     }).catch(() => ({ status: 200 }));
     return { enabled: true, provider: 'openai', healthy: res.status === 200 };
   } catch (e) {
+    logger.warn({ msg: 'LLM health check failed', provider: LLM_PROVIDER, err: e.message });
     return { enabled: true, provider: LLM_PROVIDER, healthy: false, reason: e.message };
   }
 }
@@ -64,8 +66,10 @@ async function parseIntent(message, hints = {}) {
   if (!LLM_ENABLED) return { usedLLM: false, intent: null };
   try {
     if (!takeToken()) {
+      logger.warn({ msg: 'LLM rate limit hit', rpm: LLM_RPM });
       return { usedLLM: false, intent: null, error: 'rate_limited' };
     }
+    const start = Date.now();
     if (LLM_PROVIDER === 'ollama') {
       const prompt = buildIntentPrompt(message, hints);
       const res = await axios.post(`${OLLAMA_BASE_URL}/api/generate`, {
@@ -74,6 +78,8 @@ async function parseIntent(message, hints = {}) {
         stream: false,
       }, { timeout: LLM_TIMEOUT_MS });
       const text = res.data?.response || '';
+      const ms = Date.now() - start;
+      logger.info({ msg: 'LLM call success', provider: 'ollama', ms });
       return { usedLLM: true, intent: safeJson(text) };
     } else {
       const prompt = buildIntentPrompt(message, hints);
@@ -89,9 +95,12 @@ async function parseIntent(message, hints = {}) {
         headers: OPENAI_API_KEY ? { Authorization: `Bearer ${OPENAI_API_KEY}` } : {},
       });
       const text = res.data?.choices?.[0]?.message?.content || '';
+      const ms = Date.now() - start;
+      logger.info({ msg: 'LLM call success', provider: 'openai', ms });
       return { usedLLM: true, intent: safeJson(text) };
     }
   } catch (e) {
+    logger.error({ msg: 'LLM call failed', provider: LLM_PROVIDER, err: e.message });
     return { usedLLM: true, intent: null, error: e.message };
   }
 }
@@ -117,6 +126,14 @@ function safeJson(text) {
 module.exports = {
   health,
   parseIntent,
+  getConfig: () => ({
+    enabled: LLM_ENABLED,
+    provider: LLM_PROVIDER,
+    ollama: { baseUrl: OLLAMA_BASE_URL, model: OLLAMA_MODEL },
+    openai: { baseUrl: OPENAI_BASE_URL, model: OPENAI_MODEL, hasApiKey: Boolean(OPENAI_API_KEY) },
+    limits: { timeoutMs: LLM_TIMEOUT_MS, rpm: LLM_RPM },
+    promptConfig
+  }),
   config: {
     LLM_ENABLED,
     LLM_PROVIDER,
