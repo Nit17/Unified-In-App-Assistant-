@@ -1,0 +1,26 @@
+{
+  "name": "unified-in-app-assistant",
+  "version": "1.0.0",
+  "description": "A unified in-app assistant with conversation continuity, action execution, and ticket management",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start"
+  },
+  "keywords": [
+    "assistant",
+    "chat",
+    "conversation",
+    "tickets",
+    "actions"
+  ],
+  "author": "Assistant",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
