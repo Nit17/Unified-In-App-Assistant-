@@ -15,7 +15,9 @@ import {
   Button,
   Divider,
   Alert,
-  LinearProgress
+  LinearProgress,
+  Drawer,
+  Tooltip
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -23,7 +25,8 @@ import {
   Person as PersonIcon,
   Assignment as TicketIcon,
   GetApp as DownloadIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 import moment from 'moment';
@@ -41,6 +44,9 @@ const App = () => {
   });
   const [llmHealth, setLlmHealth] = useState({ enabled: false, healthy: false, provider: 'ollama' });
   const messagesEndRef = useRef(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [llmConfig, setLlmConfig] = useState(null);
+  const [llmRateLimitedOpen, setLlmRateLimitedOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('sessionId', sessionId);
@@ -77,6 +83,15 @@ const App = () => {
       setLlmHealth(res.data);
     } catch (e) {
       setLlmHealth({ enabled: false, healthy: false, provider: 'unknown' });
+    }
+  };
+
+  const fetchLlmConfig = async () => {
+    try {
+      const res = await axios.get('/api/llm/config');
+      setLlmConfig(res.data);
+    } catch (e) {
+      setLlmConfig(null);
     }
   };
 
@@ -125,6 +140,12 @@ const App = () => {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // If server hints that LLM was rate-limited, show tooltip
+      if (response.data?.meta?.llmError === 'rate_limited') {
+        setLlmRateLimitedOpen(true);
+        setTimeout(() => setLlmRateLimitedOpen(false), 2500);
+      }
 
       if (response.data.actions) {
         setActionResults(prev => [...prev, ...response.data.actions]);
@@ -255,6 +276,7 @@ const App = () => {
   );
 
   return (
+    <>
     <Container maxWidth="xl" sx={{ height: '100vh', py: 2 }}>
       <Grid container spacing={2} sx={{ height: '100%' }}>
         {/* Main Chat Area */}
@@ -274,18 +296,31 @@ const App = () => {
                   label={llmHealth.healthy ? `LLM: ${llmHealth.provider} • Healthy` : (llmHealth.enabled ? `LLM: ${llmHealth.provider} • Unavailable` : 'LLM: Disabled')}
                   color={llmHealth.healthy ? 'success' : (llmHealth.enabled ? 'warning' : 'default')}
                 />
-                <Chip
-                  size="small"
-                  label={llmEnabled ? 'Using LLM for parsing' : 'Heuristic parsing'}
-                  onClick={() => {
-                    const next = !llmEnabled;
-                    setLlmEnabled(next);
-                    localStorage.setItem('useLLM', String(next));
-                  }}
-                  variant="outlined"
-                  color={llmEnabled ? 'info' : 'default'}
-                  sx={{ cursor: 'pointer' }}
-                />
+                <Tooltip
+                  title="LLM rate limit reached. Falling back to heuristic parsing."
+                  placement="bottom"
+                  open={llmRateLimitedOpen}
+                  onClose={() => setLlmRateLimitedOpen(false)}
+                  disableFocusListener
+                  disableHoverListener
+                  disableTouchListener
+                >
+                  <Chip
+                    size="small"
+                    label={llmEnabled ? 'Using LLM for parsing' : 'Heuristic parsing'}
+                    onClick={() => {
+                      const next = !llmEnabled;
+                      setLlmEnabled(next);
+                      localStorage.setItem('useLLM', String(next));
+                    }}
+                    variant="outlined"
+                    color={llmEnabled ? 'info' : 'default'}
+                    sx={{ cursor: 'pointer' }}
+                  />
+                </Tooltip>
+                <IconButton size="small" onClick={() => { setSettingsOpen(true); fetchLlmConfig(); }} title="Settings">
+                  <SettingsIcon />
+                </IconButton>
               </Box>
             </Box>
 
@@ -425,7 +460,38 @@ const App = () => {
           </Box>
         </Grid>
       </Grid>
-    </Container>
+  </Container>
+    
+    {/* Settings Drawer */}
+    <Drawer anchor="right" open={settingsOpen} onClose={() => setSettingsOpen(false)}>
+      <Box sx={{ width: 420, p: 2 }}>
+        <Typography variant="h6" gutterBottom>Settings</Typography>
+        <Typography variant="subtitle2" gutterBottom>LLM Configuration</Typography>
+        {llmConfig ? (
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Provider: <b>{llmConfig.provider}</b> | Enabled: <b>{String(llmConfig.enabled)}</b>
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Timeout: <b>{llmConfig.limits?.timeoutMs} ms</b> | RPM: <b>{llmConfig.limits?.rpm}</b>
+            </Typography>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle2" gutterBottom>Prompt Template</Typography>
+            <Paper variant="outlined" sx={{ p: 1, maxHeight: 300, overflow: 'auto', backgroundColor: 'grey.50' }}>
+              <pre style={{ margin: 0, fontSize: 12 }}>
+                {JSON.stringify(llmConfig.promptConfig, null, 2)}
+              </pre>
+            </Paper>
+            <Alert severity="info" sx={{ mt: 1 }}>
+              Prompt is read-only from the UI. Edit server/config/promptConfig.json and restart the server.
+            </Alert>
+          </Box>
+        ) : (
+          <Alert severity="warning">Unable to load LLM config</Alert>
+        )}
+      </Box>
+    </Drawer>
+    </>
   );
 };
 
