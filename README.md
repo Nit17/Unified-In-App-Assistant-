@@ -99,3 +99,25 @@ npm run dev
   - Material-UI
   - Socket.io (for real-time updates)
   - Moment.js (for date handling)
+
+  ## Optional: Local LLM Integration (Ollama)
+
+  You can enable a local LLM to improve intent detection and entity extraction.
+
+  1) Install Ollama (macOS/Linux/Windows): https://ollama.ai
+
+  2) Pull a model (example):
+    - `ollama pull llama3.1`
+
+  3) Enable LLM in `.env` (or export env vars):
+    - `LLM_ENABLED=true`
+    - `LLM_PROVIDER=ollama`
+    - `OLLAMA_BASE_URL=http://localhost:11434`
+    - `OLLAMA_MODEL=llama3.1`
+
+  4) Start the backend and check health:
+    - Visit `http://localhost:5000/api/llm/health`
+
+  You can also use OpenAI-compatible endpoints (LM Studio / OpenRouter / Azure OpenAI) by setting:
+    - `LLM_PROVIDER=openai`
+    - `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`
