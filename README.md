@@ -121,3 +121,20 @@ npm run dev
   You can also use OpenAI-compatible endpoints (LM Studio / OpenRouter / Azure OpenAI) by setting:
     - `LLM_PROVIDER=openai`
     - `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`
+
+  ### UI Toggle and Status
+  - The header shows an LLM status chip (Disabled / Unavailable / Healthy) and a chip to toggle parsing mode.
+  - Toggling updates localStorage (`useLLM`) and affects subsequent chat requests.
+
+  ### Rate Limits and Timeouts
+  Configure via environment variables:
+  - `LLM_TIMEOUT_MS` (default 15000)
+  - `LLM_RPM` (requests per minute, default 30)
+
+  ### Prompt Configuration
+  Customize intent extraction prompts without code changes by editing:
+  - `server/config/promptConfig.json`
+  Fields:
+  - `system`: system instruction
+  - `intentInstruction`: formatting and schema
+  - `examples`: few-shot examples to guide the model

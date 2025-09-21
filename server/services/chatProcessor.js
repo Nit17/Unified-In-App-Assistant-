@@ -5,15 +5,18 @@ const llmService = require('./llmService');
 
 class ChatProcessor {
   async processMessage(message, context) {
-    const { conversation, invoiceData, tickets } = context;
+    const { conversation, invoiceData, tickets, useLLM } = context;
     const lowerMessage = message.toLowerCase();
 
-    // Analyze the message to determine intent (LLM first if enabled, fallback to heuristics)
+    // Analyze the message to determine intent
     let intent = null;
-    const llm = await llmService.parseIntent(message).catch(() => ({ intent: null }));
-    if (llm && llm.intent && llm.intent.type) {
-      intent = llm.intent;
-    } else {
+    if (useLLM) {
+      const llm = await llmService.parseIntent(message).catch(() => ({ intent: null }));
+      if (llm && llm.intent && llm.intent.type) {
+        intent = llm.intent;
+      }
+    }
+    if (!intent) {
       intent = this.analyzeIntent(message);
     }
     

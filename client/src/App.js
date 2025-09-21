@@ -35,12 +35,18 @@ const App = () => {
   const [actionResults, setActionResults] = useState([]);
   const [sessionId] = useState(() => localStorage.getItem('sessionId') || generateSessionId());
   const [isLoading, setIsLoading] = useState(false);
+  const [llmEnabled, setLlmEnabled] = useState(() => {
+    const saved = localStorage.getItem('useLLM');
+    return saved ? saved === 'true' : false;
+  });
+  const [llmHealth, setLlmHealth] = useState({ enabled: false, healthy: false, provider: 'ollama' });
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('sessionId', sessionId);
     loadConversationHistory();
     loadTickets();
+    fetchLlmHealth();
   }, [sessionId]);
 
   useEffect(() => {
@@ -62,6 +68,15 @@ const App = () => {
       setActionResults(response.data.actions || []);
     } catch (error) {
       console.error('Error loading conversation history:', error);
+    }
+  };
+
+  const fetchLlmHealth = async () => {
+    try {
+      const res = await axios.get('/api/llm/health');
+      setLlmHealth(res.data);
+    } catch (e) {
+      setLlmHealth({ enabled: false, healthy: false, provider: 'unknown' });
     }
   };
 
@@ -92,6 +107,7 @@ const App = () => {
       const response = await axios.post('/api/chat', {
         message: inputValue,
         sessionId: sessionId,
+        useLLM: llmEnabled,
         context: {
           messages: messages.slice(-5), // Send last 5 messages for context
           tickets: tickets,
@@ -160,6 +176,7 @@ const App = () => {
 
   const refreshTickets = () => {
     loadTickets();
+    fetchLlmHealth();
   };
 
   const formatTimestamp = (timestamp) => {
@@ -251,6 +268,25 @@ const App = () => {
               <Typography variant="body2" color="text.secondary">
                 Session: {sessionId.substring(0, 20)}...
               </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                <Chip
+                  size="small"
+                  label={llmHealth.healthy ? `LLM: ${llmHealth.provider} • Healthy` : (llmHealth.enabled ? `LLM: ${llmHealth.provider} • Unavailable` : 'LLM: Disabled')}
+                  color={llmHealth.healthy ? 'success' : (llmHealth.enabled ? 'warning' : 'default')}
+                />
+                <Chip
+                  size="small"
+                  label={llmEnabled ? 'Using LLM for parsing' : 'Heuristic parsing'}
+                  onClick={() => {
+                    const next = !llmEnabled;
+                    setLlmEnabled(next);
+                    localStorage.setItem('useLLM', String(next));
+                  }}
+                  variant="outlined"
+                  color={llmEnabled ? 'info' : 'default'}
+                  sx={{ cursor: 'pointer' }}
+                />
+              </Box>
             </Box>
 
             {/* Messages */}

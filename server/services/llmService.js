@@ -1,4 +1,13 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+let promptConfig = null;
+try {
+  const cfgPath = path.join(__dirname, '..', 'config', 'promptConfig.json');
+  if (fs.existsSync(cfgPath)) {
+    promptConfig = JSON.parse(fs.readFileSync(cfgPath, 'utf-8'));
+  }
+} catch {}
 
 const LLM_ENABLED = (process.env.LLM_ENABLED || 'false').toLowerCase() === 'true';
 const LLM_PROVIDER = (process.env.LLM_PROVIDER || 'ollama').toLowerCase();
@@ -11,6 +20,27 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1';
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'http://localhost:1234/v1';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
+
+// Limits & timeouts
+const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
+const LLM_RPM = Number(process.env.LLM_RPM || 30); // requests per minute
+let tokens = LLM_RPM; // simple token bucket
+let lastRefill = Date.now();
+
+function takeToken() {
+  const now = Date.now();
+  const elapsed = now - lastRefill;
+  const refill = Math.floor(elapsed / 60000) * LLM_RPM; // per full minute
+  if (refill > 0) {
+    tokens = Math.min(LLM_RPM, tokens + refill);
+    lastRefill = now;
+  }
+  if (tokens > 0) {
+    tokens -= 1;
+    return true;
+  }
+  return false;
+}
 
 async function health() {
   if (!LLM_ENABLED) return { enabled: false, provider: LLM_PROVIDER, healthy: false, reason: 'LLM disabled' };
@@ -33,13 +63,16 @@ async function health() {
 async function parseIntent(message, hints = {}) {
   if (!LLM_ENABLED) return { usedLLM: false, intent: null };
   try {
+    if (!takeToken()) {
+      return { usedLLM: false, intent: null, error: 'rate_limited' };
+    }
     if (LLM_PROVIDER === 'ollama') {
       const prompt = buildIntentPrompt(message, hints);
       const res = await axios.post(`${OLLAMA_BASE_URL}/api/generate`, {
         model: OLLAMA_MODEL,
         prompt,
         stream: false,
-      }, { timeout: 15000 });
+      }, { timeout: LLM_TIMEOUT_MS });
       const text = res.data?.response || '';
       return { usedLLM: true, intent: safeJson(text) };
     } else {
@@ -52,7 +85,7 @@ async function parseIntent(message, hints = {}) {
         ],
         temperature: 0,
       }, {
-        timeout: 15000,
+        timeout: LLM_TIMEOUT_MS,
         headers: OPENAI_API_KEY ? { Authorization: `Bearer ${OPENAI_API_KEY}` } : {},
       });
       const text = res.data?.choices?.[0]?.message?.content || '';
@@ -64,10 +97,10 @@ async function parseIntent(message, hints = {}) {
 }
 
 function buildIntentPrompt(message, hints = {}) {
-  return `You are an intent extractor for an enterprise invoice assistant.\n` +
-    `Return ONLY a compact JSON object with fields: {type, vendor, status, timeframe}.\n` +
-    `Types: filter_invoices | explain_failures | create_ticket | download_report | ticket_status | general.\n` +
-    `Message: "${message}"`;
+  const system = promptConfig?.system || 'You extract structured intents for an enterprise invoice assistant.';
+  const instruction = promptConfig?.intentInstruction || 'Return ONLY a compact JSON object with fields: {type, vendor, status, timeframe}. Types: filter_invoices | explain_failures | create_ticket | download_report | ticket_status | general.';
+  const examples = (promptConfig?.examples || []).map(ex => `User: ${ex.user}\nJSON: ${JSON.stringify(ex.json)}`).join('\n');
+  return `${system}\n${instruction}\n${examples ? examples + '\n' : ''}Message: "${message}"`;
 }
 
 function safeJson(text) {
@@ -91,5 +124,7 @@ module.exports = {
     OLLAMA_MODEL,
     OPENAI_BASE_URL,
     OPENAI_MODEL,
+    LLM_TIMEOUT_MS,
+    LLM_RPM,
   }
 };

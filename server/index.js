@@ -25,7 +25,7 @@ const llmService = require('./services/llmService');
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, sessionId, context } = req.body;
+    const { message, sessionId, context, useLLM } = req.body;
     
     // Get or create conversation
     let conversation = conversations.get(sessionId) || {
@@ -49,7 +49,8 @@ app.post('/api/chat', async (req, res) => {
       conversation,
       context,
       invoiceData,
-      tickets: Array.from(tickets.values()).filter(t => t.sessionId === sessionId)
+      tickets: Array.from(tickets.values()).filter(t => t.sessionId === sessionId),
+      useLLM: Boolean(useLLM)
     });
 
     // Add assistant response to conversation

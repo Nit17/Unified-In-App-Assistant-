@@ -1,0 +1,14 @@
+{
+  "system": "You extract structured intents for an enterprise invoice assistant.",
+  "intentInstruction": "Return ONLY a compact JSON object with fields: {type, vendor, status, timeframe}. Types: filter_invoices | explain_failures | create_ticket | download_report | ticket_status | general.",
+  "examples": [
+    {
+      "user": "Filter invoices for last month, vendor=IndiSky, status=failed",
+      "json": { "type": "filter_invoices", "vendor": "IndiSky", "status": "failed", "timeframe": "last_month" }
+    },
+    {
+      "user": "Why did these fail?",
+      "json": { "type": "explain_failures" }
+    }
+  ]
+}
