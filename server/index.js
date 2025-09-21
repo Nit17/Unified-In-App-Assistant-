@@ -18,6 +18,7 @@ const invoiceData = require('./data/invoices');
 const chatProcessor = require('./services/chatProcessor');
 const actionExecutor = require('./services/actionExecutor');
 const ticketManager = require('./services/ticketManager');
+const llmService = require('./services/llmService');
 
 // Routes
 
@@ -202,6 +203,16 @@ app.get('/api/health', (req, res) => {
     conversations: conversations.size,
     tickets: tickets.size
   });
+});
+
+// LLM health check
+app.get('/api/llm/health', async (req, res) => {
+  try {
+    const status = await llmService.health();
+    res.json(status);
+  } catch (e) {
+    res.status(500).json({ enabled: false, healthy: false, reason: e.message });
+  }
 });
 
 // Serve static files in production

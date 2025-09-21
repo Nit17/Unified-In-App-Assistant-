@@ -1,14 +1,21 @@
 const moment = require('moment');
 const actionExecutor = require('./actionExecutor');
 const ticketManager = require('./ticketManager');
+const llmService = require('./llmService');
 
 class ChatProcessor {
   async processMessage(message, context) {
     const { conversation, invoiceData, tickets } = context;
     const lowerMessage = message.toLowerCase();
 
-    // Analyze the message to determine intent
-    const intent = this.analyzeIntent(message);
+    // Analyze the message to determine intent (LLM first if enabled, fallback to heuristics)
+    let intent = null;
+    const llm = await llmService.parseIntent(message).catch(() => ({ intent: null }));
+    if (llm && llm.intent && llm.intent.type) {
+      intent = llm.intent;
+    } else {
+      intent = this.analyzeIntent(message);
+    }
     
     let response = {
       text: '',
